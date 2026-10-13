@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portás Péter</title>
+<meta name="description" content="Portás Péter: humoros kezelőpult kapcsolókkal, tekerőkkel és egy nagy gombbal.">
+<meta name="theme-color" content="#e4e7ec">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='black'/%3E%3Ctext x='32' y='44' font-size='30' font-weight='800' text-anchor='middle' fill='white' font-family='Arial,sans-serif'%3EPP%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=Barlow+Condensed:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-light:#e4e7ec;
+  --bg-dark:#07090d;
+  --mod-light:#fbfcfd;
+  --mod-dark:#12161e;
+  --neon:#2a62ff;
+  --pa:-50%;
+  --pb:0%;
+  --f-ui:"Barlow",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --f-cond:"Barlow Condensed","Arial Narrow","Roboto Condensed",ui-sans-serif,system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg-light);font-family:var(--f-ui);font-size:16px;line-height:1.3;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+}
+button{font:inherit;color:inherit}
+h1,h2{margin:0}
+
+/* ---------- Téma-tokenek (a JS minden elemre külön kapcsolja a sötét változatot) ---------- */
+[data-sweep]{
+  --ink:#0f1218;--ink-2:#5d6574;--line:#d3d8e0;--well:#e3e6ec;--face:#f6f7fa;--face-2:#dfe3ea;
+  --ctl-border:#b4bccb;--tick:#c6ccd8;--tick-on:#0f1218;--shade:rgba(16,26,52,.24);--hi:rgba(255,255,255,.95);--cap-hi:rgba(255,255,255,.75);
+  color:var(--ink);transition:color .4s;
+}
+[data-sweep][data-dk="1"]{
+  --ink:#edf0f7;--ink-2:#8d96aa;--line:#272e3e;--well:#090c12;--face:#262d3d;--face-2:#171c29;
+  --ctl-border:#4a5572;--tick:#38405a;--tick-on:#edf0f7;--shade:rgba(0,0,0,.7);--hi:rgba(255,255,255,.09);--cap-hi:rgba(255,255,255,.2);
+}
+
+/* ---------- Oldalváz ---------- */
+.stage{
+  min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;gap:18px;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));
+  background:linear-gradient(90deg,var(--bg-dark) var(--pa),var(--bg-light) var(--pb));
+}
+.wrap{width:100%;max-width:1200px;margin:0 auto;flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:34px}
+.chip{display:inline-flex;align-items:center;gap:10px;font-size:15px;font-weight:600}
+.chip .clock{font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.led{width:10px;height:10px;border-radius:50%;background:#22d081;box-shadow:0 0 0 3px rgba(34,208,129,.2),0 0 10px rgba(34,208,129,.85);animation:blink 2.6s ease-in-out infinite}
+@keyframes blink{50%{opacity:.45}}
+.pill{display:inline-flex;align-items:center;padding:6px 14px;border-radius:999px;background:var(--well);font-weight:600;font-size:14px;cursor:pointer}
+.pill[hidden]{display:none}
+
+.grid{
+  display:grid;gap:14px;grid-template-columns:1fr 1fr;
+  grid-template-areas:"sec gate" "k1 k2" "big big";
+}
+@media (min-width:880px){
+  .grid{gap:20px;grid-template-columns:1fr 1.15fr 1.15fr;grid-template-areas:"sec k1 k2" "gate k1 k2" "big big big"}
+}
+.m-sec{grid-area:sec}.m-gate{grid-area:gate}.m-k1{grid-area:k1}.m-k2{grid-area:k2}.m-big{grid-area:big}
+
+.mod{
+  position:relative;border:1px solid var(--line);border-radius:30px;padding:clamp(14px,2.2vw,26px);
+  background:linear-gradient(90deg,var(--mod-dark) var(--a,-99999px),var(--mod-light) var(--b,0px));
+  box-shadow:0 1px 0 var(--hi) inset,0 26px 50px -32px var(--shade),0 2px 6px -3px var(--shade);
+  transition:border-color .4s;
+}
+.label{font-size:clamp(17px,1.7vw,21px);font-weight:600;line-height:1.15;letter-spacing:-.005em}
+
+/* ---------- Közös "gomb-keret" (ezt színezi neon kékre a biztonsági kapcsoló) ---------- */
+.ctl{
+  border:2px solid var(--ctl-border);
+  --glow:0 0 0 0 rgba(42,98,255,0),0 0 0 0 rgba(42,98,255,0),inset 0 0 0 0 rgba(42,98,255,0);
+  box-shadow:var(--depth,0 0 0 0 transparent),var(--glow);
+}
+body.neon .ctl{
+  border-color:var(--neon);
+  --glow:0 0 0 1px var(--neon),0 0 14px 2px rgba(42,98,255,.8),inset 0 0 12px rgba(42,98,255,.4);
+}
+:focus-visible{outline:3px solid var(--neon);outline-offset:3px}
+
+/* ---------- Kapcsolók ---------- */
+.m-sw{display:flex;flex-direction:column;justify-content:space-between;gap:16px}
+@media (min-width:880px){.m-sw{flex-direction:row;align-items:center;gap:18px}}
+.switch{
+  --sw-w:68px;--sw-h:38px;--depth:inset 0 2px 5px var(--shade);
+  flex:none;position:relative;width:var(--sw-w);height:var(--sw-h);padding:3px;border-radius:999px;
+  background:var(--well);cursor:pointer;
+  transition:background-color .3s,border-color .35s,box-shadow .35s;
+}
+@media (min-width:880px){.switch{--sw-w:94px;--sw-h:52px}}
+.switch .thumb{
+  display:block;width:calc(var(--sw-h) - 10px);height:calc(var(--sw-h) - 10px);border-radius:50%;
+  background:linear-gradient(180deg,#ffffff,#d9dde7);box-shadow:0 2px 6px rgba(10,20,40,.35);
+  transition:transform .34s cubic-bezier(.3,1.35,.5,1);
+}
+.switch[aria-checked="true"]{background:var(--on,#18c37e)}
+.switch[aria-checked="true"] .thumb{transform:translateX(calc(var(--sw-w) - var(--sw-h)))}
+.switch[aria-disabled="true"]{cursor:progress}
+
+/* ---------- Tekerők ---------- */
+.m-knob{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.knob-wrap{
+  position:relative;width:min(100%,236px);aspect-ratio:1/1;cursor:grab;
+  touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+}
+.knob-wrap:active{cursor:grabbing}
+.ticks{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.ticks line{stroke:var(--tick);stroke-width:2.2;stroke-linecap:round;transition:stroke .25s}
+.ticks line.on{stroke:var(--kc,var(--tick-on))}
+.ticks text{fill:var(--ink-2);font-family:var(--f-ui);font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:central;transition:fill .25s}
+.ticks text.on{fill:var(--ink)}
+.knob{
+  position:absolute;inset:16%;border-radius:50%;
+  background:radial-gradient(circle at 50% 28%,var(--face),var(--face-2));
+  --depth:inset 0 2px 0 var(--hi),0 18px 30px -16px var(--shade),0 4px 10px -4px var(--shade);
+  transition:border-color .35s,box-shadow .35s;
+}
+.cap{
+  position:absolute;inset:10%;border-radius:50%;
+  background-color:var(--cap,var(--face));
+  background-image:radial-gradient(circle at 32% 24%,var(--cap-hi),rgba(255,255,255,0) 55%),radial-gradient(circle at 70% 92%,rgba(0,0,0,.2),rgba(0,0,0,0) 60%);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.1),0 6px 14px -6px var(--shade);
+  transition:background-color .35s;
+}
+.rot{position:absolute;inset:0;border-radius:50%;transform:rotate(var(--ang,0deg));will-change:transform}
+.rot::before{
+  content:"";position:absolute;inset:0;border-radius:50%;
+  background:repeating-conic-gradient(rgba(0,0,0,.16) 0 2.5deg,transparent 2.5deg 7.5deg);
+  -webkit-mask:radial-gradient(circle,transparent 69%,#000 70%);mask:radial-gradient(circle,transparent 69%,#000 70%);
+}
+.k-win .rot{transition:transform .17s cubic-bezier(.3,1.6,.5,1)}
+.ind{position:absolute;left:50%;top:8%;width:max(5px,4.2%);height:19%;transform:translateX(-50%);border-radius:99px;background:var(--ind,var(--ink));transition:background .35s}
+
+.readout{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%}
+.big-num{font-family:var(--f-cond);font-weight:800;font-size:clamp(46px,6vw,76px);line-height:.95;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.sub{font-size:clamp(13px,1.3vw,15.5px);color:var(--ink-2);min-height:2.6em;line-height:1.3}
+.state-n{font-size:clamp(13px,1.3vw,15.5px);color:var(--ink-2);font-weight:600}
+.state-name{font-family:var(--f-cond);font-weight:800;font-size:clamp(30px,4.2vw,50px);line-height:1;letter-spacing:.005em}
+
+/* ---------- Nagy gomb ---------- */
+.m-big{padding:clamp(10px,1.6vw,16px)}
+.bigbtn{
+  --depth:inset 0 1px 0 var(--hi),0 12px 22px -12px var(--shade),0 5px 0 -1px var(--face-2);
+  appearance:none;-webkit-appearance:none;display:block;width:100%;min-height:clamp(92px,12.5vw,132px);
+  border-radius:22px;background:linear-gradient(180deg,var(--face),var(--face-2));
+  font-family:var(--f-cond);font-weight:800;font-size:clamp(38px,6.4vw,68px);letter-spacing:.005em;line-height:1;
+  cursor:pointer;transition:border-color .35s,box-shadow .2s,transform .08s;
+}
+.bigbtn:active{transform:translateY(4px);--depth:inset 0 1px 0 var(--hi),0 4px 8px -6px var(--shade),0 1px 0 -1px var(--face-2)}
+.bigbtn.hit{
+  background:linear-gradient(180deg,#ff5667,#d3112b);color:#fff;
+  --depth:inset 0 1px 0 rgba(255,255,255,.45),0 14px 44px -6px rgba(255,40,64,.7),0 5px 0 -1px #9d0c20;
+}
+
+/* ---------- Márkanév (bal alsó sarok) ---------- */
+.foot{display:flex;justify-content:flex-start}
+.brand{
+  font-family:var(--f-cond);font-weight:800;text-transform:uppercase;
+  font-size:clamp(46px,13.5vw,124px);line-height:.86;letter-spacing:-.005em;
+}
+
+/* ---------- FaceTime-imitáció (csak Apple eszközökön) ---------- */
+.ft{
+  position:fixed;inset:0;z-index:100;display:none;opacity:0;transition:opacity .35s ease;
+  color:#fff;background:#0a0c14;overflow:hidden;font-family:var(--f-ui);
+}
+.ft.open{display:block}
+.ft.show{opacity:1}
+.ft-bg{
+  position:absolute;inset:-25%;
+  background:
+    radial-gradient(40% 40% at 25% 25%,rgba(122,98,255,.85),transparent 70%),
+    radial-gradient(38% 38% at 78% 70%,rgba(34,178,214,.75),transparent 70%),
+    radial-gradient(30% 30% at 60% 15%,rgba(255,92,140,.45),transparent 70%);
+  filter:blur(30px) saturate(1.2);animation:drift 16s ease-in-out infinite alternate;
+}
+@keyframes drift{to{transform:translate3d(4%,-3%,0) scale(1.12) rotate(6deg)}}
+.ft-in,.ft-call{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  padding:max(56px,env(safe-area-inset-top)) 24px max(40px,env(safe-area-inset-bottom));
+}
+.ft-in{justify-content:space-between}
+.ft[data-screen="incoming"] .ft-call{display:none}
+.ft[data-screen="call"] .ft-in{display:none}
+.ft-in-top{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;margin-top:6vh}
+.ft h2{font-size:clamp(30px,5vw,40px);font-weight:700;letter-spacing:-.01em}
+.ft-status{font-size:18px;opacity:.78;margin:0}
+.avatar{
+  --s:128px;position:relative;width:var(--s);height:var(--s);border-radius:50%;display:grid;place-items:center;
+  font-family:var(--f-cond);font-weight:800;font-size:calc(var(--s)*.42);letter-spacing:.01em;
+  background:linear-gradient(145deg,#9a86ff,#34c3ff);
+  box-shadow:0 20px 50px -12px rgba(80,120,255,.65),inset 0 2px 0 rgba(255,255,255,.35);
+}
+.avatar.huge{--s:min(46vw,210px)}
+.avatar.ringing::before,.avatar.ringing::after,.avatar.talking::before,.avatar.talking::after{
+  content:"";position:absolute;inset:0;border-radius:50%;border:2px solid rgba(255,255,255,.55);animation:ringout 2s ease-out infinite;
+}
+.avatar.ringing::after,.avatar.talking::after{animation-delay:1s}
+@keyframes ringout{from{transform:scale(1);opacity:.8}to{transform:scale(1.7);opacity:0}}
+.ft-actions{display:flex;gap:min(22vw,96px)}
+.act{display:flex;flex-direction:column;align-items:center;gap:10px;font-size:15px}
+.round{
+  width:72px;height:72px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer;color:#fff;
+  transition:transform .12s;
+}
+.round:active{transform:scale(.92)}
+.round svg{width:32px;height:32px}
+.round.red{background:#ff3b30}.round.green{background:#34c759}
+.ft.shake .ft-in-top{animation:shake .5s}
+@keyframes shake{20%{transform:translateX(-10px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+
+.ft-call{justify-content:space-between}
+.ft-call-top{text-align:center}
+.ft-call-top b{display:block;font-size:20px;font-weight:700}
+.ft-call-top span{font-size:15px;opacity:.78;font-variant-numeric:tabular-nums}
+.selfview{
+  position:absolute;top:max(56px,env(safe-area-inset-top));right:18px;width:92px;height:126px;border-radius:16px;
+  background:linear-gradient(160deg,#3b4468,#1a1f33);border:1px solid rgba(255,255,255,.22);
+  display:grid;place-items:end start;padding:8px 10px;font-size:13px;font-weight:600;opacity:.92;
+}
+.ft-stage{flex:1;display:grid;place-items:center}
+.ft-bottom{width:100%;max-width:640px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.caption{
+  width:100%;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:6px;
+  padding:16px 18px;border-radius:22px;border:1px solid rgba(255,255,255,.16);
+  background:rgba(18,20,32,.55);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);
+  font-size:clamp(17px,2.3vw,21px);line-height:1.38;
+}
+.caption .who{font-size:14px;font-weight:700;opacity:.7}
+.caption .hint{font-size:13px;opacity:.55}
+.caption.pop .txt{animation:capin .4s ease}
+@keyframes capin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.dots{display:flex;gap:7px}
+.dots i{width:7px;height:7px;border-radius:99px;background:rgba(255,255,255,.35);transition:width .25s,background .25s}
+.dots i.on{width:22px;background:#fff}
+.ctrls{display:flex;gap:22px;margin-top:2px}
+.cbtn{width:64px;height:64px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer;color:#fff;background:rgba(255,255,255,.18);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.cbtn svg{width:28px;height:28px}
+.cbtn[aria-pressed="true"]{background:#fff;color:#111}
+.cbtn.end{background:#ff3b30}
+
+@media (prefers-reduced-motion:reduce){
+  .led,.ft-bg,.avatar::before,.avatar::after{animation:none}
+}
+</style>
+</head>
+<body>
+<noscript>A játékhoz JavaScript szükséges.</noscript>
+
+<div class="stage">
+  <main class="wrap">
+    <header class="top">
+      <span class="chip" data-sweep><span class="led"></span>Kezelőpult</span>
+      <span class="chip" data-sweep>
+        <button type="button" class="pill ctl" id="callBtn" hidden>Péter hívása</button>
+        <span class="clock" id="clock">--:--</span>
+      </span>
+    </header>
+
+    <section class="grid" aria-label="Kezelőfelület">
+      <div class="mod m-sw m-sec" data-sweep>
+        <label class="label" id="lbl-sec" for="sw-sec">Informatikai biztonság</label>
+        <button type="button" class="switch ctl" id="sw-sec" role="switch" aria-checked="false" aria-labelledby="lbl-sec" style="--on:#18c37e"><span class="thumb"></span></button>
+      </div>
+
+      <div class="mod m-sw m-gate" data-sweep>
+        <label class="label" id="lbl-gate" for="sw-gate">A(z) kapu kinyitása</label>
+        <button type="button" class="switch ctl" id="sw-gate" role="switch" aria-checked="false" aria-labelledby="lbl-gate" style="--on:#ffb000"><span class="thumb"></span></button>
+      </div>
+
+      <section class="mod m-knob m-k1" data-sweep aria-labelledby="k1-label">
+        <h2 class="label" id="k1-label">Értetlen dolgozók</h2>
+        <div class="knob-wrap" id="knob1">
+          <svg class="ticks" viewBox="-104 -104 208 208" aria-hidden="true"></svg>
+          <div class="knob ctl" role="slider" tabindex="0" aria-labelledby="k1-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="cap"><div class="rot"><i class="ind"></i></div></div>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="big-num" id="k1-val">0</div>
+          <div class="sub" id="k1-sub"></div>
+        </div>
+      </section>
+
+      <section class="mod m-knob m-k2" data-sweep aria-labelledby="k2-label">
+        <h2 class="label" id="k2-label">Windows választása</h2>
+        <div class="knob-wrap k-win" id="knob2">
+          <svg class="ticks" viewBox="-104 -104 208 208" aria-hidden="true"></svg>
+          <div class="knob ctl" role="slider" tabindex="0" aria-labelledby="k2-label" aria-valuemin="1" aria-valuemax="6" aria-valuenow="1">
+            <div class="cap"><div class="rot"><i class="ind"></i></div></div>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="state-n" id="k2-n">1. állapot</div>
+          <div class="state-name" id="k2-name">Windows XP</div>
+        </div>
+      </section>
+
+      <div class="mod m-big" data-sweep>
+        <button type="button" class="bigbtn ctl" id="goHome">Megyek haza!</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <h1 class="brand" data-sweep>Portás Péter</h1>
+  </footer>
+</div>
+
+<!-- FaceTime-hívást imitáló tutorial: csak Apple eszközökön jelenik meg -->
+<div class="ft" id="ft" role="dialog" aria-modal="true" aria-label="Videóhívás Portás Péterrel" aria-hidden="true" data-screen="incoming">
+  <div class="ft-bg"></div>
+
+  <section class="ft-in">
+    <div class="ft-in-top">
+      <div class="avatar ringing" aria-hidden="true">PP</div>
+      <h2>Portás Péter</h2>
+      <p class="ft-status" id="ft-status">FaceTime videó…</p>
+    </div>
+    <div class="ft-actions">
+      <div class="act">
+        <button type="button" class="round red" id="ft-decline" aria-label="Elutasítás">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+        </button>
+        <span>Elutasítás</span>
+      </div>
+      <div class="act">
+        <button type="button" class="round green" id="ft-accept" aria-label="Elfogadás">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2.2l4.4-2.6A1 1 0 0 1 21 7.5v9a1 1 0 0 1-1.6.9L15 14.8V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+        </button>
+        <span>Elfogadás</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="ft-call">
+    <div class="ft-call-top"><b>Portás Péter</b><span id="ft-timer">00:00</span></div>
+    <div class="selfview" aria-hidden="true">Te</div>
+    <div class="ft-stage"><div class="avatar huge talking" aria-hidden="true">PP</div></div>
+    <div class="ft-bottom">
+      <button type="button" class="caption" id="ft-caption">
+        <span class="who">Péter</span>
+        <span class="txt" id="ft-text"></span>
+        <span class="hint" id="ft-hint">Koppints a továbblépéshez</span>
+      </button>
+      <div class="dots" id="ft-dots" aria-hidden="true"></div>
+      <div class="ctrls">
+        <button type="button" class="cbtn" id="ft-mic" aria-pressed="false" aria-label="Némítás">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+        </button>
+        <button type="button" class="cbtn" id="ft-cam" aria-pressed="false" aria-label="Kamera kikapcsolása">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2.2l4.4-2.6A1 1 0 0 1 21 7.5v9a1 1 0 0 1-1.6.9L15 14.8V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+        </button>
+        <button type="button" class="cbtn end" id="ft-end" aria-label="Hívás befejezése">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.956.956 0 0 1-.29-.7c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28a11.27 11.27 0 0 0-2.67-1.85.996.996 0 0 1-.56-.9v-3.1A15.9 15.9 0 0 0 12 9z"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ===== Beállítások (ezeket nyugodtan átírhatod) ===== */
+const NEON_MS  = 10000;  // ennyi ideig neon kék a gombok kerete
+const SWEEP_MS = 20000;  // az áttűnés hossza oda- és visszafelé
+const HOLD_MS  = 10000;  // ennyi ideig marad sötét a felület
+const FEATHER  = 0.5;    // az áttűnő sáv szélessége a képernyő szélességének arányában
+const RED_MS   = 1500;   // ennyi ideig marad piros a „Megyek haza!” gomb
+const STEP_MS  = 7500;   // egy tutorial-lépés hossza a videóhívásban
+
+const $ = (s, r = document) => r.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const root = document.documentElement;
+
+/* ===== Hang és rezgés ===== */
+let actx = null;
+function audio() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!actx) actx = new AC();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  } catch (e) { return null; }
+}
+function tone(freq, dur, type, vol, delay = 0) {
+  const c = audio(); if (!c) return;
+  const o = c.createOscillator(), g = c.createGain();
+  const t = c.currentTime + delay;
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(t); o.stop(t + dur + 0.03);
+}
+const tick  = (f = 1400) => tone(f, 0.035, 'square', 0.035);
+const beep  = () => tone(1000, 0.3, 'square', 0.12);
+const chime = () => { tone(660, 0.14, 'sine', 0.09); tone(880, 0.2, 'sine', 0.09, 0.13); };
+const buzz  = ms => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} };
+
+/* ===== Óra a fejlécben ===== */
+const clockEl = $('#clock');
+function updateClock() {
+  clockEl.textContent = new Date().toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' });
+}
+updateClock(); setInterval(updateClock, 15000);
+
+/* ===== Kapcsolók ===== */
+const isOn = b => b.getAttribute('aria-checked') === 'true';
+const setOn = (b, on) => b.setAttribute('aria-checked', on ? 'true' : 'false');
+
+/* --- Informatikai biztonság: a gombok kerete 10 másodpercre neon kék --- */
+const swSec = $('#sw-sec');
+let neonTimer = null;
+swSec.addEventListener('click', () => {
+  const on = !isOn(swSec);
+  setOn(swSec, on);
+  tick(on ? 1600 : 1000);
+  clearTimeout(neonTimer);
+  if (on) {
+    document.body.classList.add('neon');
+    neonTimer = setTimeout(() => document.body.classList.remove('neon'), NEON_MS);
+  } else {
+    document.body.classList.remove('neon');
+  }
+});
+
+/* --- A(z) kapu kinyitása: lassú áttűnés sötétbe (balról jobbra), várakozás, vissza (jobbról balra) --- */
+const swGate = $('#sw-gate');
+const sweepEls = Array.from(document.querySelectorAll('[data-sweep]'));
+const metaTheme = $('meta[name="theme-color"]');
+let curP = 0, gateBusy = false;
+
+/* P = az áttűnő front helyzete a képernyő szélességének arányában.
+   0 = teljesen világos, 1 + FEATHER = teljesen sötét. */
+function render(P) {
+  curP = P;
+  const W = root.clientWidth || window.innerWidth;
+  root.style.setProperty('--pa', ((P - FEATHER) * 100).toFixed(2) + '%');
+  root.style.setProperty('--pb', (P * 100).toFixed(2) + '%');
+  for (const el of sweepEls) {
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--a', ((P - FEATHER) * W - r.left).toFixed(1) + 'px');
+    el.style.setProperty('--b', (P * W - r.left).toFixed(1) + 'px');
+    const t = clamp((P - (r.left + r.width / 2) / W) / FEATHER, 0, 1);
+    const dk = t > 0.5 ? '1' : '0';
+    if (el.dataset.dk !== dk) el.dataset.dk = dk;
+  }
+  if (metaTheme) metaTheme.setAttribute('content', clamp((P - 0.5) / FEATHER, 0, 1) > 0.5 ? '#07090d' : '#e4e7ec');
+}
+window.addEventListener('resize', () => render(curP));
+render(0);
+
+const ease = p => -(Math.cos(Math.PI * p) - 1) / 2;
+function animate(ms, step, done) {
+  const t0 = performance.now();
+  (function frame(now) {
+    const p = clamp((now - t0) / ms, 0, 1);
+    step(p);
+    if (p < 1) requestAnimationFrame(frame); else done();
+  })(t0);
+}
+function runGate() {
+  const T = 1 + FEATHER;
+  animate(SWEEP_MS, p => render(ease(p) * T), () => {
+    render(T);
+    setTimeout(() => {
+      animate(SWEEP_MS, p => render((1 - ease(p)) * T), () => {
+        render(0);
+        setOn(swGate, false);
+        swGate.removeAttribute('aria-disabled');
+        gateBusy = false;
+      });
+    }, HOLD_MS);
+  });
+}
+swGate.addEventListener('click', () => {
+  if (gateBusy) return;
+  gateBusy = true;
+  setOn(swGate, true);
+  swGate.setAttribute('aria-disabled', 'true');
+  tick(1600);
+  runGate();
+});
+
+/* ===== Tekerő gombok ===== */
+const NS = 'http://www.w3.org/2000/svg';
+const MIN = -135, MAX = 135, SPAN = MAX - MIN;
+const polar = (r, deg) => { const a = deg * Math.PI / 180; return [Math.sin(a) * r, -Math.cos(a) * r]; };
+
+function buildTicks(svg, count, majorEvery, labelFor) {
+  const lines = [], labels = [];
+  for (let i = 0; i < count; i++) {
+    const deg = MIN + SPAN * i / (count - 1);
+    const major = i % majorEvery === 0;
+    const [x1, y1] = polar(78, deg), [x2, y2] = polar(major ? 91 : 85, deg);
+    const ln = document.createElementNS(NS, 'line');
+    ln.setAttribute('x1', x1.toFixed(2)); ln.setAttribute('y1', y1.toFixed(2));
+    ln.setAttribute('x2', x2.toFixed(2)); ln.setAttribute('y2', y2.toFixed(2));
+    svg.appendChild(ln); lines.push(ln);
+    const txt = labelFor && labelFor(i);
+    if (txt) {
+      const [tx, ty] = polar(100, deg);
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', tx.toFixed(2)); t.setAttribute('y', ty.toFixed(2));
+      t.textContent = txt; svg.appendChild(t); labels[i] = t;
+    }
+  }
+  return { lines, labels };
+}
+
+/* steps = null: folyamatos 0..100; steps = N: N darab rögzített állás (1..N) */
+function createKnob(wrap, steps, onChange) {
+  const knob = $('.knob', wrap), rot = $('.rot', wrap);
+  const N = steps, vMax = N ? N - 1 : 100;
+  let angle = MIN, value = -1, dragging = false, cx = 0, cy = 0, last = 0;
+
+  const toValue = a => Math.round((a - MIN) / SPAN * vMax);
+  const toAngle = v => MIN + v * SPAN / vMax;
+
+  function apply(silent) {
+    const v = toValue(angle);
+    rot.style.setProperty('--ang', (N ? toAngle(v) : angle).toFixed(2) + 'deg');
+    if (v !== value) { value = v; onChange(v, !!silent); }
+  }
+  const pointerAngle = e => Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+
+  wrap.addEventListener('pointerdown', e => {
+    if (e.button !== undefined && e.button > 0) return;
+    const r = wrap.getBoundingClientRect();
+    cx = r.left + r.width / 2; cy = r.top + r.height / 2;
+    last = pointerAngle(e); dragging = true;
+    try { wrap.setPointerCapture(e.pointerId); } catch (_) {}
+    knob.focus({ preventScroll: true });
+    e.preventDefault();
+  });
+  wrap.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const a = pointerAngle(e);
+    let d = a - last;
+    if (d > 180) d -= 360; else if (d < -180) d += 360;
+    last = a;
+    angle = clamp(angle + d, MIN, MAX);
+    apply();
+  });
+  const stop = () => { if (!dragging) return; dragging = false; if (N) angle = toAngle(value); };
+  wrap.addEventListener('pointerup', stop);
+  wrap.addEventListener('pointercancel', stop);
+
+  knob.addEventListener('keydown', e => {
+    const big = N ? 1 : 10;
+    let v = value;
+    switch (e.key) {
+      case 'ArrowRight': case 'ArrowUp': v += 1; break;
+      case 'ArrowLeft': case 'ArrowDown': v -= 1; break;
+      case 'PageUp': v += big; break;
+      case 'PageDown': v -= big; break;
+      case 'Home': v = 0; break;
+      case 'End': v = vMax; break;
+      default: return;
+    }
+    e.preventDefault();
+    angle = toAngle(clamp(v, 0, vMax));
+    apply();
+  });
+
+  apply(true);
+  return knob;
+}
+
+/* --- Értetlen dolgozók: csak tekergetni lehet, semmit nem vezérel --- */
+function mood(v) {
+  if (v === 0) return 'Mindenki érti. Gyanús.';
+  if (v < 20) return 'Pár ember még kérdezne.';
+  if (v < 50) return 'Egyre többen néznek maguk elé.';
+  if (v < 80) return 'A fél iroda a plafont bámulja.';
+  if (v < 100) return 'Már csak a nyomtató érti.';
+  return 'Teljes az egyetértés: senki sem érti.';
+}
+{
+  const wrap = $('#knob1'), svg = $('.ticks', wrap);
+  const T = 51;
+  const { lines } = buildTicks(svg, T, 5, i => i === 0 ? '0' : i === T - 1 ? '100' : null);
+  const val = $('#k1-val'), sub = $('#k1-sub');
+  const knob = $('.knob', wrap);
+  createKnob(wrap, null, v => {
+    val.textContent = v;
+    sub.textContent = mood(v);
+    lines.forEach((ln, i) => ln.classList.toggle('on', v > 0 && i * 2 <= v));
+    knob.setAttribute('aria-valuenow', v);
+    knob.setAttribute('aria-valuetext', v + ' értetlen dolgozó');
+  });
+}
+
+/* --- Windows választása: 6 állás, mindegyiknek saját színe --- */
+const WIN = [
+  { n: 'Windows XP',    c: '#34c04a', ind: '#ffffff' },   // zöld
+  { n: 'Windows Vista', c: '#5cc8ff', ind: '#0d2438' },   // világoskék
+  { n: 'Windows 7',     c: '#1b3f9f', ind: '#ffffff' },   // sötétkék
+  { n: 'Windows 10',    c: '#f7e51c', ind: '#2b2700' },   // citromsárga
+  { n: 'Windows 11',    c: '#e4202f', ind: '#ffffff' },   // vörös
+  { n: 'Ubuntu',        c: '#b9a1ff', ind: '#1d1238' }    // világoslila
+];
+{
+  const wrap = $('#knob2'), svg = $('.ticks', wrap);
+  const { lines, labels } = buildTicks(svg, WIN.length, 1, i => String(i + 1));
+  const nEl = $('#k2-n'), nameEl = $('#k2-name');
+  const knob = $('.knob', wrap);
+  createKnob(wrap, WIN.length, (i, silent) => {
+    const w = WIN[i];
+    wrap.style.setProperty('--kc', w.c);
+    wrap.style.setProperty('--cap', w.c);
+    wrap.style.setProperty('--ind', w.ind);
+    nEl.textContent = (i + 1) + '. állapot';
+    nameEl.textContent = w.n;
+    lines.forEach((ln, k) => ln.classList.toggle('on', k === i));
+    labels.forEach((t, k) => t && t.classList.toggle('on', k === i));
+    knob.setAttribute('aria-valuenow', i + 1);
+    knob.setAttribute('aria-valuetext', w.n);
+    if (!silent) { tick(1200); buzz(8); }
+  });
+}
+
+/* ===== Megyek haza! ===== */
+const goHome = $('#goHome');
+let redTimer = null;
+goHome.addEventListener('click', () => {
+  beep();
+  buzz(160);
+  goHome.classList.add('hit');
+  clearTimeout(redTimer);
+  redTimer = setTimeout(() => goHome.classList.remove('hit'), RED_MS);
+});
+
+/* ===== Apple eszköz felismerése és a FaceTime-imitáció ===== */
+function isAppleDevice() {
+  const q = new URLSearchParams(location.search).get('apple');   // ?apple=1 kipróbáláshoz, ?apple=0 kikapcsoláshoz
+  if (q === '1') return true;
+  if (q === '0') return false;
+  const ua = navigator.userAgent || '';
+  const plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  if (/^(Mac|iOS)/i.test(plat) || /Macintosh|Mac OS X/i.test(ua)) return true;   // Mac, és az asztali módú iPad
+  return false;
+}
+
+const STEPS = [
+  'Szia, Portás Péter vagyok! Rövid videóhívásban elmondom, hogyan működik ez a kezelőpult.',
+  'Az „Informatikai biztonság” kapcsolóra minden gomb kerete 10 másodpercre neon kékre vált. Hivatalosan ez maga a védelem.',
+  'Az „A(z) kapu kinyitása” kapcsoló lassan, balról jobbra sötét módra váltja a felületet. 10 másodperc után jobbról balra visszavilágosodik.',
+  'Az „Értetlen dolgozók” tekerő semmit nem vezérel, csak tekergetni lehet. A száma 0 és 100 között mutatja, hányan nem értik, mi folyik itt.',
+  'A „Windows választása” gomb hat állású: XP, Vista, 7, 10, 11 és Ubuntu. Mindegyiknek saját színe van, a neve pedig alatta olvasható.',
+  'A nagy „Megyek haza!” gombot elég megnyomni: sípol egyet, pirosra vált, telefonon még rezeg is. Ennyi a munka lényege.',
+  'Ennyi volt! Ha valamit nem értesz, tekerd feljebb az értetlen dolgozók számát, és máris nem vagy egyedül. Szép napot!'
+];
+
+const ft = $('#ft'), ftText = $('#ft-text'), ftHint = $('#ft-hint'), ftCaption = $('#ft-caption');
+const ftTimer = $('#ft-timer'), ftDots = $('#ft-dots'), ftStatus = $('#ft-status');
+let stepIdx = -1, stepTimer = null, clockTimer = null, callStart = 0, declines = 0;
+
+STEPS.forEach(() => ftDots.appendChild(document.createElement('i')));
+
+function openCall() {
+  declines = 0;
+  ft.dataset.screen = 'incoming';
+  ftStatus.textContent = 'FaceTime videó…';
+  ft.classList.add('open');
+  ft.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(() => requestAnimationFrame(() => ft.classList.add('show')));
+  setTimeout(() => { try { $('#ft-accept').focus({ preventScroll: true }); } catch (_) {} }, 400);
+}
+function closeCall() {
+  clearTimeout(stepTimer); clearInterval(clockTimer);
+  ft.classList.remove('show');
+  ft.setAttribute('aria-hidden', 'true');
+  setTimeout(() => { if (!ft.classList.contains('show')) ft.classList.remove('open'); }, 380);
+}
+function updateTimer() {
+  const s = Math.floor((Date.now() - callStart) / 1000);
+  ftTimer.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+function showStep(i) {
+  clearTimeout(stepTimer);
+  stepIdx = i;
+  ftText.textContent = STEPS[i];
+  ftHint.textContent = i === STEPS.length - 1 ? 'Koppints a hívás befejezéséhez' : 'Koppints a továbblépéshez';
+  ftCaption.classList.remove('pop'); void ftCaption.offsetWidth; ftCaption.classList.add('pop');
+  Array.from(ftDots.children).forEach((d, k) => d.classList.toggle('on', k === i));
+  stepTimer = setTimeout(nextStep, STEP_MS);
+}
+function nextStep() {
+  if (stepIdx < STEPS.length - 1) showStep(stepIdx + 1); else closeCall();
+}
+function acceptCall() {
+  ft.dataset.screen = 'call';
+  chime();
+  callStart = Date.now(); updateTimer();
+  clearInterval(clockTimer); clockTimer = setInterval(updateTimer, 500);
+  showStep(0);
+}
+function declineCall() {
+  if (declines++ === 0) {
+    ft.classList.add('shake');
+    ftStatus.textContent = 'Péter nem adja fel…';
+    setTimeout(() => { ft.classList.remove('shake'); ftStatus.textContent = 'FaceTime videó…'; }, 1700);
+  } else {
+    closeCall();
+  }
+}
+
+$('#ft-accept').addEventListener('click', acceptCall);
+$('#ft-decline').addEventListener('click', declineCall);
+$('#ft-end').addEventListener('click', closeCall);
+ftCaption.addEventListener('click', nextStep);
+['#ft-mic', '#ft-cam'].forEach(sel => {
+  const b = $(sel);
+  b.addEventListener('click', () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'));
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && ft.classList.contains('show')) closeCall(); });
+
+if (isAppleDevice()) {
+  const callBtn = $('#callBtn');
+  callBtn.hidden = false;
+  callBtn.addEventListener('click', openCall);
+  setTimeout(openCall, 900);
+}
+})();
+</script>
+</body>
+</html>
